@@ -1,0 +1,16 @@
+{
+    "scoreboard": [
+      {
+        "player_name": "Pierre",
+        "score": 23
+      },
+      {
+        "player_name": "Paul",
+        "score": 17
+      },
+      {
+        "player_name": "Jacques",
+        "score": 10
+      }
+    ]
+  }

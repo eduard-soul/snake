@@ -1,6 +1,5 @@
 <template>
 	<Game />
-	<div></div>
 </template>
 
 <script setup>
@@ -9,13 +8,13 @@
 
 <style scoped>
 
-	div {
+	/* div {
 		position: absolute;
 		top: 0px;
 		left: 0px;
 		width: 100vw;
-		height: 100vh;
+		height: 90vh;
 		z-index: 3;
-		/* background-color: violet; */
-	}
+		background-color: violet;
+	} */
 </style>
