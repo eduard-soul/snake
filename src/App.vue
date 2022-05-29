@@ -8,10 +8,6 @@
 // import HelloWorld from './components/HelloWorld.vue'
 import Snake from './components/Snake.vue'
 
-
-fetch('../scoreboard.json').then(res => res.json()).then(data => console.log(data.scoreboard[0].player_name));
-// .then(data => console.log(data));
-
 </script>
 
 <style>

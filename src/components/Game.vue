@@ -1,9 +1,17 @@
 <template>
 	<div id="game">
-		<!-- <div id="title"><h1>Snake Game</h1></div> -->
 		<div id="game-over" v-if="data.end">
-			<input type="text" id="player-name" v-model="data.player_name" required minlength="3" maxlength="4" placeholder="NAME" @keyup.enter="add_score_to_history">
-			<input type="button" @click="add_score_to_history">
+			<h1 id="what-name">What is your name ?</h1>
+			<div id="send-player">	
+				<input type="text" id="player-name" v-model="data.player_name" required minlength="3" maxlength="4" placeholder="NAME" @keyup.enter="add_score_to_history">
+				<button type="button" @click="add_score_to_history">REPLAY</button>
+			</div>
+			<h1 id="choose-difficulty">Next game Difficulty ?</h1>
+			<div id="difficulty-level">
+				<button v-on:click="change_difficulty(0)" id="easy" class="difficulty-btn">EASY</button>
+				<button v-on:click="change_difficulty(1)" id="normal" class="difficulty-btn">NORMAL</button>
+				<button v-on:click="change_difficulty(2)" id="hard" class="difficulty-btn">HARD</button>
+			</div>
 		</div>
 		<div id="grid">
 			<div class="grid-item" :id="`grid${item-1}`" v-for="item in grid_case" v-bind:key="item">
@@ -15,26 +23,34 @@
 			</div>
 		</div>
 		<div id="score-wrapper">
-			<h1 class="score" id="score">Score : {{data.score[0]}}</h1>
+			<h1>&nbsp;</h1>
+			<h1 class="score" id="score">Score : {{data.score}}</h1>
+			<div class="apple-score">
+				<img src="../assets/apple.svg" alt="apple">
+				<h1>&nbsp;: {{data.apple_score}}</h1>
+			</div>
 		</div>
 	</div>
-	<!-- <input type="text" @keydown.arrow-down="moove_head(data)"> -->
 </template>
 
 <script setup>
-	import { reactive, ref, onMounted, watch, onUpdated} from "vue";
+	import { reactive, ref, onMounted, onUpdated, inject} from "vue";
 
-	let grid_case = ref(50); // The size of the grid is not reactive for now
+	let grid_case = ref(50);
 	let data = reactive({
 		head: [],
 		head_rotation: "",
 		body: [],
 		apple: [],
 		where_body: [],
-		score: [0],
+		apple_score: 0,
+		score: 0,
 		player_name: "",
 		end: false,
+		diff: 1,
+		bonus: 100,
 	})
+	data.diff = inject('data').diff;
 
 	function init_tab(i, array, which){
 		let j = 0;
@@ -45,26 +61,70 @@
 			j++;
 		}
 	}
+	function change_size() {
+		let grid = document.getElementById("grid");
+		let snake_head = document.getElementById("snake-head");
+		let grid_item = document.getElementsByClassName("grid-item");
+
+		if (data.diff == 2) {
+			grid.style.gridTemplateColumns = "repeat(20, 5vh)";
+			grid.style.gridTemplateRows = "repeat(10, 5vh)";
+			snake_head.style.width = "5vh";
+			for (let i = 0; i < grid_item.length; i++) {
+				grid_item[i].style.width = "5.1vh";
+				grid_item[i].style.height = "5.1vh";
+				// console.log(i);
+			}
+		}
+		else {
+			grid.style.gridTemplateColumns = "repeat(10, 10vh)";
+			grid.style.gridTemplateRows = "repeat(5, 10vh)";
+			snake_head.style.width = "10vh";
+			for (let i = 0; i < grid_item.length; i++) {
+				grid_item[i].style.width = "10.1vh";
+				grid_item[i].style.height = "10.1vh";
+			}
+		}
+	}
+
+	function change_difficulty(difficulty) {
+		let button = document.getElementsByClassName('difficulty-btn');
+		for (let i = 0; i < button.length; i++) {
+			button[i].classList.remove('difficulty-active');
+		}
+		button[difficulty].classList.add('difficulty-active');
+		data.diff = difficulty;
+	}
 
 	function init_game(which) {
+		if (data.diff == 2) { grid_case.value = 200; }
+		else {grid_case.value = 50}
+
 		if (which == "reset") {
 			data.head.length = 0;
 			data.body.length = 0;
 			data.apple.length = 0;
 			data.where_body.length = 0;
-			data.score.unshift(0);
+			data.score = 0;
+			data.apple_score = 0;
 		}
-		init_tab(50, data.head, "false");
-		init_tab(50, data.body, "zero")
-		init_tab(50, data.apple, "false" )
+		init_tab(grid_case.value, data.head, "false");
+		init_tab(grid_case.value, data.body, "zero")
+		init_tab(grid_case.value, data.apple, "false" )
 		spawn_head(data);
 		spawn_apple(data);
 		if (which != "reset") {
 			event_listener_html();
 		}
 		if (which == "reset") {
-			time_move(1000);
+			let time;
+
+			if (data.diff == 0) {time = 800}
+			else if (data.diff == 1) {time = 1000}
+			else {time = 700}
 			data.end = false;
+			console.log(data.end);
+			time_move(time);
 		}
 	}
 
@@ -77,7 +137,14 @@
 
 	function check_if_border(nb) {
 		// Need to change these values to be reactive to the size of the map
-		if (nb % 10 == 0 || nb % 10 == 9 || Math.floor(nb / 10) == 0 || Math.floor(nb / 10) == 4) {
+		let size_line;
+		if (data.diff == 2) {
+			size_line = 20; 
+		} else {
+			size_line = 10;
+		}
+
+		if (nb % size_line == 0 || nb % size_line == size_line-1 || Math.floor(nb / size_line) == 0 || Math.floor(nb / size_line) == size_line/2-1) {
 			return (1);
 		}
 		return (0);
@@ -90,6 +157,7 @@
 		}
 		console.log(`${data.player_name}'s score : ${data.score[0]}`);
 		init_game("reset");
+		change_size();
 	}
 
 	function add_body(direction) {
@@ -128,14 +196,8 @@
 		}
 	}
 
-	function apply_rotation_body_part(body, grid, angle,justify, align) {
+	function apply_rotation_body_part(body, angle, align) {
 		body.style.transform = `rotate(${angle})`;
-		if (justify != "none") {
-			grid.style.justifyContent = justify;
-		}
-		if (align != "none") {
-			grid.style.alignItems = align;
-		}
 	}
 
 	function rotate_body_parts() {
@@ -152,16 +214,16 @@
 				var body_straight = document.getElementById(`body-s${data.where_body[i]}`);
 
 				if (data.body[data.where_body[i]] == 1 ) {
-					apply_rotation_body_part(body_straight, grid_item, "90deg", "none", "none");
+					apply_rotation_body_part(body_straight, "90deg");
 				}
 				else if (data.body[data.where_body[i]] == 2) {
-					apply_rotation_body_part(body_straight, grid_item, "270deg", "none", "none");
+					apply_rotation_body_part(body_straight, "270deg");
 				}
 				else if (data.body[data.where_body[i]] == 3) {
-					apply_rotation_body_part(body_straight, grid_item, "180deg", "none", "none");
+					apply_rotation_body_part(body_straight, "180deg");
 				}
 				else if (data.body[data.where_body[i]] == 4) {
-					apply_rotation_body_part(body_straight, grid_item, "0deg", "none", "none");
+					apply_rotation_body_part(body_straight, "0deg");
 				}
 			}
 			else {
@@ -169,23 +231,19 @@
 
 					if ((data.body[data.where_body[i]] == 2 && data.body[data.where_body[i + 1]] == 3)
 					|| data.body[data.where_body[i]] == 4 && data.body[data.where_body[i + 1]] == 1) {
-						// apply_rotation_body_part(body_turn, grid_item, "90deg", "flex-start", "flex-end");
-						apply_rotation_body_part(body_turn, grid_item, "90deg", "none", "none");
+						apply_rotation_body_part(body_turn, "90deg");
 					}
 					else if ((data.body[data.where_body[i]] == 2 && data.body[data.where_body[i + 1]] == 4)
 					|| data.body[data.where_body[i]] == 3 && data.body[data.where_body[i + 1]] == 1) {
-						// apply_rotation_body_part(body_turn, grid_item, "0deg", "flex-end", "flex-end");
-						apply_rotation_body_part(body_turn, grid_item, "0deg", "none", "none");
+						apply_rotation_body_part(body_turn, "0deg");
 					}
 					else if ((data.body[data.where_body[i]] == 1 && data.body[data.where_body[i + 1]] == 4)
 					|| data.body[data.where_body[i]] == 3 && data.body[data.where_body[i + 1]] == 2) {
-						// apply_rotation_body_part(body_turn, grid_item, "270deg", "flex-end", "flex-start");
-						apply_rotation_body_part(body_turn, grid_item, "270deg", "none", "none");
+						apply_rotation_body_part(body_turn, "270deg");
 					}
 					else if ((data.body[data.where_body[i]] == 1 && data.body[data.where_body[i + 1]] == 3)
 					|| data.body[data.where_body[i]] == 4 && data.body[data.where_body[i + 1]] == 2) {
-						// apply_rotation_body_part(body_turn, grid_item, "180deg", "flex-start", "flex-start");
-						apply_rotation_body_part(body_turn, grid_item, "180deg", "none", "none");
+						apply_rotation_body_part(body_turn, "180deg");
 					}
 			}
 		}
@@ -194,20 +252,16 @@
 			var grid_item = grid_items[data.where_body[i]];
 
 			if (data.body[data.where_body[i]] == 1 ) {
-				// apply_rotation_body_part(tail, grid_item, "270deg", "none", "flex-start");
-				apply_rotation_body_part(tail, grid_item, "270deg", "none", "none");
+				apply_rotation_body_part(tail, "270deg");
 			}
 			else if (data.body[data.where_body[i]] == 2) {
-				// apply_rotation_body_part(tail, grid_item, "90deg", "none", "flex-end");
-				apply_rotation_body_part(tail, grid_item, "90deg", "none", "none");
+				apply_rotation_body_part(tail, "90deg");
 			}
 			else if (data.body[data.where_body[i]] == 3) {
-				// apply_rotation_body_part(tail, grid_item, "0deg", "flex-end", "none");
-				apply_rotation_body_part(tail, grid_item, "0deg", "none", "none");
+				apply_rotation_body_part(tail, "0deg");
 			}
 			else if (data.body[data.where_body[i]] == 4) {
-				// apply_rotation_body_part(tail, grid_item, "180deg", "flex-start", "none");
-				apply_rotation_body_part(tail, grid_item, "180deg", "none", "none");
+				apply_rotation_body_part(tail, "180deg");
 			}
 		}
 
@@ -239,10 +293,14 @@
 	}
 
 	function spawn_head(data) {
-		let rand = Math.floor(Math.random() * 49);
+		let i;
+		if (data.diff == 2) { i = 199}
+		else {i = 49}
+
+		let rand = Math.floor(Math.random() * i);
 		while (check_if_border(rand) == 1)
 		{
-			rand = Math.floor(Math.random() * 49);
+			rand = Math.floor(Math.random() * i);
 		}
 		data.head[rand] = true;
 
@@ -262,11 +320,15 @@
 	}
 
 	function spawn_apple(data) {
-		let rand = Math.floor(Math.random() * 49);
+		let i;
+		if (data.diff == 2) { i = 199}
+		else {i = 49}
+
+		let rand = Math.floor(Math.random() * i);
 		let head = go_to_head(data);
 
 		while (rand == head || data.body[rand] > 0){
-			rand = Math.floor(Math.random() * 49);
+			rand = Math.floor(Math.random() * i);
 		}
 		data.apple[rand] = true;
 	}
@@ -312,28 +374,41 @@
 
 	function moove_head(data, where) {
 		let j = go_to_head(data);
+		let size_line;
+		let size_total;
 
-		if ((j % 10 == 0 && where == -1) || (j % 10 == 9 && where == 1) || (j + where >= 50) || (j + where < 0) || data.body[j + where])
+		if (data.diff == 2) {
+			size_line = 20;
+			size_total = 200;
+		} else {
+			size_line = 10;
+			size_total = 50;
+		}
+
+
+		if ((j % size_line == 0 && where == -1) || (j % size_line == size_line - 1 && where == 1) || (j + where >= size_total) || (j + where < 0) || data.body[j + where])
 		{
 			data.end = true;
-			// alert("GAME OVER");
-			// init_game("reset");
 			return (-1);
 		}
 		if (data.apple[j + where] == true) {
 			data.apple[j + where] = false;
-			data.score[0]++;
+			data.apple_score++;
+			data.score += (10 * 1) + (10 * data.diff * 2) + data.bonus;
+			data.bonus = 100;
 			add_body(data.head_rotation);
 			data.head[j + where] = true;
 			data.head[j] = false;
 			spawn_apple(data);
 		}
 		else {
+			if (data.bonus != 0){
+				data.bonus -= 5;
+			}
 			moove_body(data);
 			data.head[j + where] = true;
 			data.head[j] = false;
 		}
-		// rotate_body_parts();
 	}
 
 	function sendArrowKeys(event) {
@@ -363,10 +438,18 @@
 			let move;
 
 			if (data.head_rotation == "up") {
-				move = -10;
+				if (data.diff == 2) {
+					move = -20;
+				} else {
+					move = -10;
+				}
 			}
 			else if (data.head_rotation == "down") {
-				move = 10;
+				if (data.diff == 2) {
+					move = 20;
+				} else {
+					move = 10;
+				}
 			}
 			else if (data.head_rotation == "right") {
 				move = 1;
@@ -375,11 +458,17 @@
 				move = -1;
 			}
 			if (moove_head(data, move) == -1) {
-				// time_move(1000);
+				console.log(data.diff);
 				return (-1);
 			}
-			if (i > 100) {
-				i -= Math.sqrt(Math.sqrt(i));
+			if (data.diff == 0) {
+				i = 800;
+			}
+			else if (i > 200 && data.diff == 1) {
+				i -= Math.sqrt(Math.sqrt(Math.sqrt(i)));
+			}
+			else if (i > 100 && data.diff == 2) {
+				i -= Math.sqrt(Math.sqrt(i)); 	
 			}
 			time_move(i);
 		}, i);
@@ -387,14 +476,24 @@
 
 	init_game();
 	onMounted(() => {
+		let time;
+
+		if (data.diff == 0) {time = 800}
+		else if (data.diff == 1) {time = 1000}
+		else {time = 700}
 		turn_head();
-		time_move(1000);
+		change_size();
+		time_move(time);
 	})
 
 	onUpdated(() => {
 		if (data.end != true) {
 			turn_head();
+			change_size();
 			rotate_body_parts();
+		}
+		if (data.end == true) {
+			change_difficulty(data.diff);
 		}
 })
 </script>
@@ -403,19 +502,6 @@
 	* {
 		padding: 0px;
 		margin: 0px;
-	}
-	#title {
-		width: 102.5vh;
-		height: 6vh;
-		margin-bottom: auto;
-		margin-top: auto;
-		border-radius: 1vh;	
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		background-color: white;
-		border: 0.4vh solid black;
-		color: rgb(28, 31, 28);
 	}
 	#game {
 		margin-top: 5vh;
@@ -426,24 +512,31 @@
 	}
 	#score-wrapper {
 		position: relative;
-		height: 19vh;
+		width: 100vh;
+		height: 5vh;
 		overflow: hidden;
 		margin-top: 3vh;
+		/* background-color: blue; */
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 	}
 	.score {
 		margin-top: 1vh;
 	}
-	#score0 {
-		opacity: 100%;
+	.apple-score {
+		display: flex;
+		justify-content: center;
+		align-items: flex-end;
+		/* background-color: green; */
 	}
-	#score1 {
-		opacity: 70%;
+	.apple-score img {
+		height: 5vh;
+		/* background-color: red; */
 	}
-	#score2 {
-		opacity: 30%;
-	}
-	#score3 {
-		opacity: 10%;
+	.apple-score h1 {
+		height: 4vh;
+		/* background-color: aqua; */
 	}
 	#grid {
 		width: 100vh;
@@ -456,8 +549,8 @@
 		border: 1vh solid black;
 	}
 	.grid-item {
-		width: 10vh;
-		height: 10vh;
+		width: 10.1vh;
+		height: 10.1vh;
 		border: 0.05vh solid black;
 		background-color: #96EB88;
 		display: flex;
@@ -465,35 +558,97 @@
 		align-items: center;
 	}
 	#snake-head {
-		width: 10.1vh;
+		width: 100%;
 		height: auto;
 	} 
 	.body-straight {
-		width: 10.1vh;
+		width: 100%;
 		height: auto;
 	}
 	.body-turn {
-		width: 10.1vh;
+		width: 100%;
 		height: auto;
 	}
 	.body-tail {
-		width: 10.1vh;
+		width: 100%;
 		height: auto;
 	}
 	#apple {
 		width: 70%;
 	}
 	#game-over {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
 		top: 31vh;
-		height: 32vh;
+		height: 27vh;
 		width: 35vw;
-		background-color: white;
+		background-color: #2c3e50;
 		position: absolute;
 		z-index: 10;
 		border-radius: 2vh;
+		border: 0.5vh solid black;
 		/* opacity: 0.8; */
 	}
+	#what-name, #choose-difficulty {
+		margin-top: 2.5vh;
+		margin-bottom: 1vh;
+		color: white;		
+	}
+	#send-player {
+		display: flex;
+		justify-content: space-between;
+		width: 70%;
+	}
 	#player-name {
+		border: none;
+		width: 20vh;
+		height: 4vh;
+		border-radius: 1vh;
 		text-transform: uppercase;
+	}
+	#send-player button {
+		height: 4vh;
+		width: 7vh;
+		border-radius: 1vh;
+		border: none;
+	}
+
+	#difficulty-level {
+		width: 65%;
+		display: flex;
+		justify-content: space-between;
+		margin: 0vh;
+	}
+
+	.difficulty-btn{
+		font-weight: bold;
+		width: 8vh;
+		height: 4vh;
+		border-radius: 1vh;
+		border: none;
+	}
+	#easy {
+		background-color: rgb(255, 255, 119);
+	}
+	#easy:hover {
+		background-color: rgb(235, 235, 113);
+	}
+
+	#normal {
+		background-color: rgb(255, 199, 95);
+	}
+	#normal:hover {
+		background-color: rgb(231, 182, 77);
+	}
+
+	#hard {
+		background-color: rgb(255, 158, 119);
+	}
+	#hard:hover {
+		background-color: rgb(231, 144, 109);
+	}
+	.difficulty-active {
+		outline: 0.6vh solid rgba(131, 255, 162, 0.596);
 	}
 </style>
